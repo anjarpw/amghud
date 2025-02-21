@@ -4,7 +4,7 @@ import Svg, { G, Rect, Line, SvgXml } from 'react-native-svg';
 import MainSpeedo from './mainSpeedo';
 import Traction from './traction'
 import { useRecoilState } from 'recoil';
-import { cumulatedPowerState, leftMotorState, modeState, rightMotorState, turningLevelState } from './state';
+import { analogSteerState, cumulatedPowerState, leftMotorState, modeState, rightMotorState, turningLevelState } from './state';
 
 
 
@@ -18,6 +18,7 @@ const Gauges = (props: GaugeProps) => {
   const [rightMotor, ] = useRecoilState(rightMotorState)
   const [leftMotor, ] = useRecoilState(leftMotorState)
   const [turningLevel, ] = useRecoilState(turningLevelState)
+  const [analogSteer, ] = useRecoilState(analogSteerState)
 
   useEffect(() => {
     console.log('🟢 Gauges Mounted');
@@ -55,7 +56,7 @@ const Gauges = (props: GaugeProps) => {
         {/* Right Bar Gauge */}
         <G transform={`translate(${width - tractionSize*0.6}, ${height/2})`}>
           {/* <Rect x={-tractionSize/2} y={-tractionSize/2} width={tractionSize} height={tractionSize} opacity={0.3} fill="blue" /> */}
-          <Traction turningLevel={turningLevel} rightMotor={rightMotor} leftMotor={leftMotor} size={tractionSize}></Traction>
+          <Traction turningLevel={turningLevel} analogSteer={analogSteer} rightMotor={rightMotor} leftMotor={leftMotor} size={tractionSize}></Traction>
         </G>
 
         {/* Indicator Line */}

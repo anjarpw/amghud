@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Animated, { runOnJS, SharedValue, useAnimatedProps, useDerivedValue, useFrameCallback, useSharedValue } from 'react-native-reanimated';
 import { Defs, Line, LinearGradient, Path, Stop, Text } from 'react-native-svg';
-import { DrivingMode } from './common';
+import { computeTransition, DrivingMode, interpolateObject } from './common';
 
 export type MainSpeedoProps = {
     size: number,
@@ -134,18 +134,7 @@ const getValueAngle = (speed: number, x: MainSpeedoType) => {
     return startAngle + speed * (endAngle - startAngle) / (max - min)
 }
 
-const interpolateObject = function <T extends Record<string, number>>(from: T, to: T, progress: number): T {
-    'worklet'
-    const result: any = {};
-    for (const key in from) {
-        if (isNaN(to[key]) || isNaN(from[key])) {
-            result[key] = from[key]
-        } else {
-            result[key] = (from[key] + (to[key] - from[key]) * progress)
-        }
-    }
-    return result as T;
-};
+
 
 const CircularGauge = (props: MainSpeedoProps) => {
 
@@ -160,7 +149,6 @@ const CircularGauge = (props: MainSpeedoProps) => {
     const speed = cumulatedPower*8
 
     useEffect(() => {
-        console.log("Mode changes", mode)
         transitionProgress.set(0)
         previousCircularGauge.set(displayedCircularGauge.get())
         currentCircularGauge.set({ ...getDrivingModeDisplay(mode), speed })
@@ -250,16 +238,8 @@ const CircularGauge = (props: MainSpeedoProps) => {
         labelData: []
     })
 
-    const derivedLabelData = useDerivedValue<ScaleLabel[]>(() => scales.get().labelData)
-
     useFrameCallback(() => {
-        let x = transitionProgress.get()
-        if (x < 1 - 0.01) {
-            x += (1 - x) / n;
-        } else {
-            x = 1
-        }
-        transitionProgress.set(x)
+        computeTransition(n, transitionProgress)
         displayedCircularGauge.set(interpolateObject(previousCircularGauge.get(), currentCircularGauge.get(), transitionProgress.get()))
         const computedScales = computeScales(displayedCircularGauge.get(), radius)
         scales.set(computedScales)
@@ -308,7 +288,7 @@ const CircularGauge = (props: MainSpeedoProps) => {
     const labelAnimationProps: any[] = []
     for (let i = 0; i < 10; i++) {
         labelAnimationProps[i] = useAnimatedProps(() => {
-            const data = derivedLabelData.get()[i]
+            const data = scales.get().labelData[i]
             let x = 0, y = 0, opacity = 0, fill = "white"
 
             if (data && data.isVisible) {
@@ -331,7 +311,6 @@ const CircularGauge = (props: MainSpeedoProps) => {
         <AnimatedPath animatedProps={scalesRedLineAnimationProps} fill="none" stroke="red" strokeWidth="2" />
         {scaleLabels.map((label, index) => {
             const animationProps = labelAnimationProps[index]
-            console.log(label)
             return (
                 <AnimatedText
                     key={`scaleLabel${index}`}

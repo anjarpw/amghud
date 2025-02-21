@@ -2,21 +2,23 @@ import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Button } from "react-native";
 import { StatusBar } from "react-native";
 import Gauges from './src/gauges'
-import { CarStats, DrivingMode } from "./src/common";
+import { CarStats, DrivingMode, interpolateValue } from "./src/common";
 import { RecoilRoot, atom, useRecoilState } from 'recoil';
-import { cumulatedPowerState, leftMotorState, modeState, rightMotorState, turningLevelState } from "./src/state";
+import { analogSteerState, cumulatedPowerState, leftMotorState, modeState, rightMotorState, turningLevelState } from "./src/state";
 import { NavigationProvider, useNavigation } from "./src/navigationContext";
+import { counterEvent } from "react-native/Libraries/Performance/Systrace";
+import { interpolate } from "react-native-reanimated";
 
 const MENU_WIDTH = 50
 
 const AppContent = () => {
-  const [modeShiftIndex, setModeShiftIndex] = useState(0);
 
-  const [cumulatedPower, setCumulatedPower] = useRecoilState(cumulatedPowerState);
-  const [turningLevel, setTurningLevel] = useRecoilState(turningLevelState);
-  const [leftMotor, setLeftMotor] = useRecoilState(leftMotorState);
-  const [rightMotor, setRightMotor] = useRecoilState(rightMotorState);
-  const [mode, setMode] = useRecoilState(modeState);
+  const [, setAnalogSteer] = useRecoilState(analogSteerState);
+  const [, setCumulatedPower] = useRecoilState(cumulatedPowerState);
+  const [, setTurningLevel] = useRecoilState(turningLevelState);
+  const [, setLeftMotor] = useRecoilState(leftMotorState);
+  const [, setRightMotor] = useRecoilState(rightMotorState);
+  const [, setMode] = useRecoilState(modeState);
 
   const drivingModes: DrivingMode[] = ['T', 'P', 'R', 'D', 'S', 'S+', 'S', 'D', 'R', 'P'];
 
@@ -33,20 +35,22 @@ const AppContent = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const cumulatedPower = Math.random()
-      setCumulatedPower(cumulatedPower)
-    }, 1000);
-    return () => clearInterval(interval); // Cleanup on unmount
-  }, []);
-
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const turningLevel = Math.random()*2 - 1
+      const analogSteer = Math.random()*2 - 1
+      let turningLevel = 0;
+      if(analogSteer>0.2){
+        turningLevel = interpolateValue(0.2, 1, (analogSteer-0.2)/0.8)
+      }
+      if(analogSteer<-0.2){
+        turningLevel = interpolateValue(-0.2, -1, (-analogSteer-0.2)/0.8)
+      }
+      const c = Math.random()
+      setCumulatedPower(c)
       setTurningLevel(turningLevel)
-      setLeftMotor(turningLevel >= 0 ? cumulatedPower: Math.abs(cumulatedPower * turningLevel))
-      setRightMotor(turningLevel <= 0 ? cumulatedPower: Math.abs(cumulatedPower * turningLevel))
-    }, 3000);
+      setAnalogSteer(analogSteer)
+      console.log(turningLevel >= 0 ? c: Math.abs(c * turningLevel))
+      setLeftMotor(c*Math.min(1, 1+2*turningLevel)) // -1: -1 0 1 1 1
+      setRightMotor(c*Math.min(1, 1-2*turningLevel))
+    }, 1000);
     return () => clearInterval(interval); // Cleanup on unmount
   }, []);
 

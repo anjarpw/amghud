@@ -27,3 +27,7 @@ export const turningLevelState = atom<number>({
     key: "turningLevelState",
     default: 0,
 });
+export const analogSteerState = atom<number>({
+    key: "analogSteerState",
+    default: 0,
+});
