@@ -6,6 +6,9 @@ const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
  *
  * @type {import('@react-native/metro-config').MetroConfig}
  */
-const config = {};
+const config = getDefaultConfig(__dirname);
+config.transformer.babelTransformerPath = require.resolve("react-native-svg-transformer");
+config.resolver.assetExts = config.resolver.assetExts.filter(ext => ext !== "svg");
+config.resolver.sourceExts.push("svg");
 
-module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+module.exports = config;

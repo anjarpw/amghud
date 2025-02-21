@@ -1,118 +1,129 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Button } from "react-native";
+import { StatusBar } from "react-native";
+import Gauges from './src/gauges'
+import { CarStats, DrivingMode } from "./src/common";
+import { RecoilRoot, atom, useRecoilState } from 'recoil';
+import { cumulatedPowerState, leftMotorState, modeState, rightMotorState, turningLevelState } from "./src/state";
+import { NavigationProvider, useNavigation } from "./src/navigationContext";
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+const MENU_WIDTH = 50
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const AppContent = () => {
+  const [modeShiftIndex, setModeShiftIndex] = useState(0);
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+  const [cumulatedPower, setCumulatedPower] = useRecoilState(cumulatedPowerState);
+  const [turningLevel, setTurningLevel] = useRecoilState(turningLevelState);
+  const [leftMotor, setLeftMotor] = useRecoilState(leftMotorState);
+  const [rightMotor, setRightMotor] = useRecoilState(rightMotorState);
+  const [mode, setMode] = useRecoilState(modeState);
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
+  const drivingModes: DrivingMode[] = ['T', 'P', 'R', 'D', 'S', 'S+', 'S', 'D', 'R', 'P'];
+
+  useEffect(() => {
+    let index = 0;
+    const interval = setInterval(() => {
+      index = (index + 1) % drivingModes.length; // Cycle through the modes
+      setMode(drivingModes[index]);
+    }, 3000); // Update every 1 second
+
+    return () => clearInterval(interval); // Cleanup on unmount
+  }, []);
+
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const cumulatedPower = Math.random()
+      setCumulatedPower(cumulatedPower)
+    }, 1000);
+    return () => clearInterval(interval); // Cleanup on unmount
+  }, []);
+
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const turningLevel = Math.random()*2 - 1
+      setTurningLevel(turningLevel)
+      setLeftMotor(turningLevel >= 0 ? cumulatedPower: Math.abs(cumulatedPower * turningLevel))
+      setRightMotor(turningLevel <= 0 ? cumulatedPower: Math.abs(cumulatedPower * turningLevel))
+    }, 3000);
+    return () => clearInterval(interval); // Cleanup on unmount
+  }, []);
+
+
+
+  const SettingsScreen = () => (
+    <View>
+      <Text>Setting</Text>
     </View>
   );
-}
-
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
-
+  const { screen, navigate } = useNavigation();
+  useEffect(() => {
+    navigate("Main")
+  }, [])
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
+    <View style={styles.content}>
+      {/* Render the active screen */}
+      <View style={{ flex: 1 }}>
+        {screen === "Main" && <Gauges />}
+        {screen === "Settings" && <SettingsScreen />}
+      </View>
 
+      {/* Navigation buttons - Aligned to the right */}
+      <View style={styles.drawer}>
+        <TouchableOpacity onPress={() => navigate("Main")} style={styles.drawerButton}>
+          <Text style={styles.drawerLabel}>Main</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => navigate("Settings")} style={styles.drawerButton}>
+          <Text style={styles.drawerLabel}>Settings</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
+// Styles
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  content: {
+    flex: 1,
+    backgroundColor: "black",
+    flexDirection: 'row'
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+  drawer: {
+    flexDirection: "column",
+    alignItems: "flex-end",
+    width: 50
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
+  drawerLabel: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
+    transform: [{ rotate: "90deg" }], // Rotate text
+    margin: 0,
+    padding: 0,
+    width: 100,
+    textAlign: "center",
   },
-  highlight: {
-    fontWeight: '700',
+  drawerButton: {
+    width: MENU_WIDTH, // Full width for buttons
+    height: 100, // Large enough to tap easily
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "gray",
+    padding: 0,
+    margin: 0,
+    marginVertical: 2, // Tiny gap between buttons
+    overflow: 'visible',
   },
 });
+
+const App = () => (
+  <RecoilRoot>
+    <NavigationProvider>
+      <AppContent />
+    </NavigationProvider>
+  </RecoilRoot>
+)
 
 export default App;

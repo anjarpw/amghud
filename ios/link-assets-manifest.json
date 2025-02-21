@@ -1,0 +1,13 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "assets/fonts/Exo-Italic-VariableFont_wght.ttf",
+      "sha1": "16d8df97be29a70f007e7a70c3337bd02d938e06"
+    },
+    {
+      "path": "assets/fonts/Exo-VariableFont_wght.ttf",
+      "sha1": "455e4da920912c56652f6080648768852943661b"
+    }
+  ]
+}
