@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { G, Path, Text, SvgXml, Rect, Defs, LinearGradient, Stop } from "react-native-svg";
-import { ColorValue } from "react-native";
+import React, { } from "react";
+import { Path, } from "react-native-svg";
 
 
 
@@ -15,15 +14,15 @@ export type LinearScaleProps = {
 
 const LinearScale = (props: LinearScaleProps) => {
     const { markers, size, majorMarkers, majorRuleSize, superMajorMarkers, hasLateralLine } = props
-    const markerDesigns: Record<number, number> = {}
+    const markerDesigns: Record<string, number> = {}
     markers.forEach(x => {
-        markerDesigns[x] = majorRuleSize / 2
+        markerDesigns[x.toFixed(2)] = majorRuleSize / 2
     })
     majorMarkers.forEach(x => {
-        markerDesigns[x] = majorRuleSize
+        markerDesigns[x.toFixed(2)] = majorRuleSize
     })
     superMajorMarkers?.forEach(x => {
-        markerDesigns[x] = majorRuleSize*2
+        markerDesigns[x.toFixed(2)] = majorRuleSize * 2
     })
 
     const pathD: string[] = []
@@ -31,16 +30,16 @@ const LinearScale = (props: LinearScaleProps) => {
     const max = markers.reduce((prev, curr) => prev > curr ? prev : curr, 0)
 
     Object.keys(markerDesigns).map((marker: string) => {
-        const markerValue = parseInt(marker)
+        const markerValue = parseFloat(marker)
         if (isNaN(markerValue)) {
             return
         }
-        const x = size * (markerValue-min) / (max - min)
+        const x = size * (markerValue - min) / (max - min)
         const y1 = 0
-        const y2 = markerDesigns[markerValue]
+        const y2 = markerDesigns[marker]
         pathD.push(`M ${x} ${y1} L ${x} ${y2}`)
     })
-    if(hasLateralLine){
+    if (hasLateralLine) {
         pathD.push(`M 0 0 L ${size} 0`)
     }
 

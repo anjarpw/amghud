@@ -1,66 +1,168 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Button } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Button, Settings } from "react-native";
 import { StatusBar } from "react-native";
 import Gauges from './src/gauges'
-import { CarStats, DrivingMode, interpolateValue } from "./src/common";
-import { RecoilRoot, atom, useRecoilState } from 'recoil';
-import { analogSteerState, cumulatedPowerState, leftMotorState, modeState, rightMotorState, turningLevelState } from "./src/state";
+import { DrivingMode } from "./src/common";
+import { RecoilRoot, useRecoilState } from 'recoil';
+import { analogBrakeState, analogSteerState, analogThrottleState, cumulatedPowerState, leftMotorState, modeState, rightMotorState, turningLevelState } from "./src/state";
 import { NavigationProvider, useNavigation } from "./src/navigationContext";
-import { counterEvent } from "react-native/Libraries/Performance/Systrace";
-import { interpolate } from "react-native-reanimated";
+import BluetoothScreen from "./src/settings";
+import { BluetoothProvider, useBluetoothContext } from "./src/useBluetooth";
+import { throttle } from 'lodash'
 
-const MENU_WIDTH = 50
+const MENU_WIDTH = 70
 
 const AppContent = () => {
+  const {
+    proceedToFindDeviceAndConnect,
+    checkConnection,
+    device
+} = useBluetoothContext();
+
 
   const [, setAnalogSteer] = useRecoilState(analogSteerState);
+  const [, setAnalogThrottle] = useRecoilState(analogThrottleState);
+  const [, setAnalogBrake] = useRecoilState(analogBrakeState);
   const [, setCumulatedPower] = useRecoilState(cumulatedPowerState);
   const [, setTurningLevel] = useRecoilState(turningLevelState);
   const [, setLeftMotor] = useRecoilState(leftMotorState);
   const [, setRightMotor] = useRecoilState(rightMotorState);
   const [, setMode] = useRecoilState(modeState);
 
+  const throttledSetMode = throttle((v) => {
+    setMode(v);
+  }, 100);
+
+  const throttledSetAnalogThrottle = throttle((v) => {
+    setAnalogThrottle(v)
+  }, 100)
+
+  const throttledSetAnalogSteer = throttle((v) => {
+    setAnalogSteer(v)
+  }, 100)
+
+
+  const throttledSetAnalogBrake = throttle((v) => {
+    setAnalogBrake(v)
+  }, 100)
+
+  const throttledSetCumulatedPower = throttle((v) => {
+    setCumulatedPower(v)
+  }, 100)
+
+  const throttledSetTurningLevel = throttle((v) => {
+    setTurningLevel(v)
+  }, 100)
+
+  const throttledSetLeftMotor = throttle((v) => {
+    setLeftMotor(v)
+  }, 100)
+
+  const throttledSetRightMotor = throttle((v) => {
+    setRightMotor(v)
+  }, 100)
+
   const drivingModes: DrivingMode[] = ['T', 'P', 'R', 'D', 'S', 'S+', 'S', 'D', 'R', 'P'];
 
+  const { registerOnDataReceivedById, unregisterOnDataReceivedById } = useBluetoothContext()
+
+  const handleDataReceived = (message: string) => {
+    const splittedString = message.split('=')
+    if (splittedString.length == 0) {
+      return
+    }
+    let [key, value] = splittedString
+    value = value ? value.trim() : ""
+    switch (key) {
+      case 'MODE':
+        if (drivingModes.indexOf(value as DrivingMode) == -1) {
+          throttledSetMode("P")
+        } else {
+          throttledSetMode(value as DrivingMode)
+        }
+        break
+      case 'ANALOG_THROTTLE':
+        throttledSetAnalogThrottle(Math.min(parseFloat(value) / 500, 1))
+        break
+      case 'ANALOG_BRAKE':
+        throttledSetAnalogBrake(Math.min(parseFloat(value) / 500, 1))
+        break
+      case 'ANALOG_STEER':
+        let v = parseFloat(value)
+        if (v > 1024) {
+          v = 1024
+        }
+        if (v < 0) {
+          v = 0
+        }
+        throttledSetAnalogSteer((512 - v) / 512)
+        break
+      case 'CUMULATED_POWER':
+        throttledSetCumulatedPower(parseFloat(value))
+        break
+      case 'TURNING_LEVEL':
+        throttledSetTurningLevel(parseFloat(value))
+        break
+      case 'LEFT_MOTOR':
+        throttledSetLeftMotor(parseFloat(value) / 255)
+        break
+      case 'RIGHT_MOTOR':
+        throttledSetRightMotor(parseFloat(value) / 255)
+        break
+    }
+  };
+
   useEffect(() => {
-    let index = 0;
-    const interval = setInterval(() => {
-      index = (index + 1) % drivingModes.length; // Cycle through the modes
-      setMode(drivingModes[index]);
-    }, 3000); // Update every 1 second
-
-    return () => clearInterval(interval); // Cleanup on unmount
-  }, []);
+    const id = "RECOIL"
+    registerOnDataReceivedById(id, handleDataReceived)
+    console.log("REGISTER SETTING CALLBACK")
+    return () => unregisterOnDataReceivedById(id)
+  }, [])
 
 
+  
   useEffect(() => {
-    const interval = setInterval(() => {
-      const analogSteer = Math.random()*2 - 1
-      let turningLevel = 0;
-      if(analogSteer>0.2){
-        turningLevel = interpolateValue(0.2, 1, (analogSteer-0.2)/0.8)
+    let isConnecting = false
+    const interval = setInterval(async () => {
+      if(isConnecting){
+        return;
       }
-      if(analogSteer<-0.2){
-        turningLevel = interpolateValue(-0.2, -1, (-analogSteer-0.2)/0.8)
+      const isConnected = await checkConnection()
+
+      if(!isConnected){
+        isConnecting = true        
+        await proceedToFindDeviceAndConnect(5000)
+        isConnecting = false
       }
-      const c = Math.random()
-      setCumulatedPower(c)
-      setTurningLevel(turningLevel)
-      setAnalogSteer(analogSteer)
-      console.log(turningLevel >= 0 ? c: Math.abs(c * turningLevel))
-      setLeftMotor(c*Math.min(1, 1+2*turningLevel)) // -1: -1 0 1 1 1
-      setRightMotor(c*Math.min(1, 1-2*turningLevel))
     }, 1000);
-    return () => clearInterval(interval); // Cleanup on unmount
-  }, []);
+    return () => clearInterval(interval)
+  }, [device])
 
 
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     throttledSetAnalogThrottle(Math.random()*1)
+  //     throttledSetAnalogBrake(Math.random()*1)
+  //     throttledSetCumulatedPower(Math.random())
+  //     throttledSetLeftMotor(Math.random()*2-1)
+  //     throttledSetRightMotor(Math.random()*2-1)
+  //     throttledSetTurningLevel(Math.random()*2-1)
+  //     throttledSetAnalogSteer(Math.random()*2-1)
+  //   },100);
+  //   return () => clearInterval(interval)
+  // }, [])
 
-  const SettingsScreen = () => (
-    <View>
-      <Text>Setting</Text>
-    </View>
-  );
+  // useEffect(() => {
+  //   let i = 0
+  //   const interval = setInterval(() => {
+  //     const mode = drivingModes[i]
+  //     throttledSetMode(mode)
+  //     i = (i+1) % (drivingModes.length)
+  //   },500);
+  //   return () => clearInterval(interval)
+  // }, [])
+
+
   const { screen, navigate } = useNavigation();
   useEffect(() => {
     navigate("Main")
@@ -70,7 +172,7 @@ const AppContent = () => {
       {/* Render the active screen */}
       <View style={{ flex: 1 }}>
         {screen === "Main" && <Gauges />}
-        {screen === "Settings" && <SettingsScreen />}
+        {screen === "Settings" && <BluetoothScreen />}
       </View>
 
       {/* Navigation buttons - Aligned to the right */}
@@ -103,7 +205,7 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 12,
     fontWeight: "bold",
-    transform: [{ rotate: "90deg" }], // Rotate text
+    transform: [{ rotate: "90deg" }, { translateY: 15 }], // Rotate text
     margin: 0,
     padding: 0,
     width: 100,
@@ -114,7 +216,7 @@ const styles = StyleSheet.create({
     height: 100, // Large enough to tap easily
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "gray",
+    backgroundColor: "#036",
     padding: 0,
     margin: 0,
     marginVertical: 2, // Tiny gap between buttons
@@ -124,9 +226,12 @@ const styles = StyleSheet.create({
 
 const App = () => (
   <RecoilRoot>
-    <NavigationProvider>
-      <AppContent />
-    </NavigationProvider>
+    <BluetoothProvider>
+      <NavigationProvider>
+        <StatusBar hidden={true}></StatusBar>
+        <AppContent />
+      </NavigationProvider>
+    </BluetoothProvider>
   </RecoilRoot>
 )
 

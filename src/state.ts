@@ -22,12 +22,19 @@ export const leftMotorState = atom<number>({
     key: "leftMotorState",
     default: 0,
 });
-
 export const turningLevelState = atom<number>({
     key: "turningLevelState",
     default: 0,
 });
 export const analogSteerState = atom<number>({
     key: "analogSteerState",
+    default: 0,
+});
+export const analogThrottleState = atom<number>({
+    key: "analogThrottleState",
+    default: 0,
+});
+export const analogBrakeState = atom<number>({
+    key: "analogBrakeState",
     default: 0,
 });

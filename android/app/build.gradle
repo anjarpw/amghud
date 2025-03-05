@@ -72,6 +72,7 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'org.webkit:android-jsc:+'
 
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -92,6 +93,12 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            storeFile file('amg-hud-release.keystore') // Path to your keystore
+            storePassword 'anz027889'
+            keyAlias 'amg-hud'
+            keyPassword 'anz027889'
+        }        
     }
     buildTypes {
         debug {
@@ -100,10 +107,11 @@ android {
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
+        
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8

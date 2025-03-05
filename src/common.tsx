@@ -29,9 +29,26 @@ export function computeTransition(n: number, transitionProgress: SharedValue<num
     let x = transitionProgress.get()
     if (x < 1 - 0.01) {
         x += (1 - x) / n;
-    } else {
-        x = 1
+        if(x > 1){
+            x = 1
+        }
+        transitionProgress.set(x)
+    } else if(x < 1){
+        transitionProgress.set(1)
     }
-    transitionProgress.set(x)
     return x
+}
+
+export function noTransition(transitionProgress: SharedValue<number>){
+    'worklet'
+    if(transitionProgress.get() < 1){
+        transitionProgress.set(1)
+    }
+}
+
+export function fromRect(x: number, y: number, width: number, height: number){
+    'worklet'
+    const x2 = x + width
+    const y2 = y + height
+    return `M ${x} ${y} L ${x2} ${y} L ${x2} ${y2} L ${x} ${y2} L ${x} ${y}`
 }
